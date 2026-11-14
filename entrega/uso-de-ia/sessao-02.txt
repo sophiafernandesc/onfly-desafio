@@ -1,0 +1,503 @@
+ ▐▛███▛█   Claude Code v2.1.308
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~/dev/desafio/onfly-desafio
+
+
+❯ adiconei o readme + declaracao na pasta entrega/. Verifique se existe algo    
+  que de pra dar uma enxugada, não ficar muita informação desnecessária         
+
+  Searched for 1 pattern, listed 1 directory (ctrl+o to expand)
+
+⏺ Bash(sed -n 80,200p README.md; git log --oneline | head -20; ls tests)
+  ⎿  * `total\_reservations` = número de reservas no arquivo.
+     * `confirmed\_reservations`, `cancelled\_reservations` e `no\_show\_re
+     servations` = contagens por status.
+     … +134 lines (ctrl+o to expand)
+
+⏺ Bash(sed -n 200,260p README.md)
+  ⎿  ├── README-ENTREGA.md
+     └── uso-de-ia/                 # apenas se usou IA
+         ├── sessao.md (ou .txt/.jsonl; várias: sessao-01.md, sessao-02.md.
+     … +39 lines (ctrl+o to expand)
+
+⏺ Bash((source .venv/bin/activate 2>/dev/null; pytest -q 2>&1 | tail -3; ruff
+      check . 2>&1 | tail -2); grep -c "^def test_" tests/*.py)
+  ⎿  .............
+        [100%]
+     13 passed in 0.31s
+     … +8 lines (ctrl+o to expand)
+
+⏺ Li os dois arquivos e o README do desafio (pra conferir o que é obrigatório).
+  Agora vou aplicar os cortes, guardando uma cópia dos originais antes.
+
+⏺ Bash(mkdir -p /private/tmp/claude-501/-Users-sophiacfernandes-dev-desafio-onfl
+      y-desafio/e02e631c-bd8b-426d-836f-8b3deb080eee/scratchpad/backup && cp
+      entrega/README-E…)
+  ⎿  Done
+
+⏺ Write(entrega/README-ENTREGA.md)
+  ⎿  Added 44 lines, removed 65 lines
+       1  # Entrega - Consolidador de reservas Onfly
+       2  
+       3 -Encontrei e corrigi **5 defeitos** no CLI. Quatro deles apareci
+         -am nos testes fornecidos. O quinto passava                     
+       4 -despercebido: o programa parava de ler o arquivo depois de 200 
+         -linhas, e isso só aparece no                                   
+       5 -`reservas_hoteis.csv`, que tem 300 reservas.                   
+       3 +Corrigi **5 defeitos** no CLI. Quatro apareciam nos testes forn
+         +ecidos; o quinto (leitura cortada em 200                       
+       4 +linhas) só aparece no `reservas_hoteis.csv`, que tem 300 reserv
+         +as.                                                            
+       5  
+       6  Não mexi nos testes fornecidos, no contrato do CLI, no formato 
+          do relatório nem nos arquivos de dados.
+       7  
+       9 -## O que estava errado                                         
+       8 +## Defeitos corrigidos                                         
+       9  
+      11 -**1. Noites calculadas errado na virada de mês** (`services/sta
+         -y_calculator.py`)                                              
+      12 -O código subtraía só o dia do mês (`checkout.day - checkin.day`
+         -). Uma estadia de 31/01 a 03/02 virava                         
+      13 -3 − 31 = −28 noites. Troquei pela diferença real entre as datas
+         -: `(checkout - checkin).days * rooms`.                         
+      10 +**1. Noites erradas na virada de mês** (`services/stay_calculat
+         +or.py`)                                                        
+      11 +Causa: subtraía só o dia do mês (`checkout.day - checkin.day`),
+         + então 31/01 → 03/02 dava −28 noites.                          
+      12 +Correção: `(checkout - checkin).days * rooms`.                 
+      13  
+      14  **2. Conversão de moeda invertida e com `float`** (`services/cu
+          rrency_converter.py`)
+      16 -O valor era dividido pela taxa em vez de multiplicado, então 10
+         -0 USD viravam cerca de 18 reais em vez de 542.                 
+      17 -Além disso, a conta passava por `float`, o que vai contra a reg
+         -ra de usar só `Decimal` para dinheiro. Agora é                 
+      18 -simplesmente `amount * rate`.                                  
+      15 +Causa: dividia pela taxa em vez de multiplicar, passando por `f
+         +loat` (100 USD viravam ~18 BRL em vez de 542).                 
+      16 +Correção: `amount * rate`, só com `Decimal`.                   
+      17  
+      18  **3. `NO_SHOW` sendo faturado** (`services/status_policy.py`)
+      21 -A regra dizia "tudo que não é `CANCELLED` é faturável", então o
+         - `NO_SHOW` entrava nas noites e nos valores.                   
+      22 -Inverti a lógica para "só `CONFIRMED` é faturável", que é o que
+         - o README pede. Isso também protege contra                     
+      23 -status novos que possam aparecer no futuro.                    
+      19 +Causa: a regra era "tudo que não é `CANCELLED` é faturável".   
+      20 +Correção: só `CONFIRMED` é faturável, como pede o README (e sta
+         +tus novos ficam de fora por padrão).                           
+      21  
+      25 -**4. Ranking de hotéis de cabeça para baixo** (`services/report
+         -_builder.py`)                                                  
+      26 -O `top_hotels` ordenava do menor valor para o maior, então most
+         -rava os hotéis que menos faturaram. Usei                       
+      27 -`-valor` na chave de ordenação para inverter só o valor e mante
+         -r o desempate por `hotel_id` em ordem crescente.               
+      28 -Não usei `reverse=True` porque ele também inverteria o desempat
+         -e.                                                             
+      22 +**4. Ranking de hotéis invertido** (`services/report_builder.py
+         +`)                                                             
+      23 +Causa: `top_hotels` ordenava do menor valor para o maior.      
+      24 +Correção: `-valor` na chave de ordenação, mantendo o desempate 
+         +por `hotel_id` crescente (`reverse=True`                       
+      25 +inverteria também o desempate).                                
+      26  
+      27  **5. Leitura cortada em 200 linhas** (`repositories/csv_reserva
+          tion_repository.py`)
+      31 -Havia um `break` no loop de leitura quando a lista chegava a 20
+         -0 reservas. Os testes usam no máximo 4 linhas e                
+      32 -a amostra do README tem 12, então nada acusava o problema. No a
+         -rquivo real, 100 reservas ficavam de fora sem                  
+      33 -nenhum aviso. Removi o corte.                                  
+      28 +Causa: um `break` no loop de leitura ao chegar em 200 reservas;
+         + nenhum teste ou amostra tinha tantas linhas.                  
+      29 +Correção: removi o corte.                                      
+      30  
+      35 -O impacto no relatório real foi grande:                        
+      31 +Impacto no relatório real:                                     
+      32  
+      33  | Campo | Antes | Depois |
+      34  |-|-|-|
+     ...
+      37  | `total_room_nights` | 909 | 1347 |
+      38  | `total_amount_brl` | 249543.79 | 396170.00 |
+      39  
+      44 -**Melhoria extra:** quando uma moeda não tinha taxa de câmbio, 
+         -o programa quebrava com `KeyError` e saía com                  
+      45 -código 1 ("erro inesperado"). Agora ele avisa qual moeda está f
+         -altando e sai com código 2, que é o código de                  
+      46 -entrada inválida definido no contrato. Isso não muda nenhum núm
+         -ero do relatório.                                              
+      40 +**Melhoria extra:** moeda sem taxa de câmbio quebrava com `KeyE
+         +rror` (código 1). Agora o CLI informa a moeda                  
+      41 +faltante e sai com código 2 (entrada inválida, conforme o contr
+         +ato). Nenhum número do relatório muda.                         
+      42  
+      43  ## Como investiguei
+      44  
+      50 -Comecei lendo o README com calma e anotando as regras de negóci
+         -o: status, noites, câmbio, arredondamento e                    
+      51 -ordenação. Essa lista virou o meu checklist para revisar o códi
+         -go.                                                            
+      45 +1. Li o README e listei as regras de negócio (status, noites, c
+         +âmbio, arredondamento, ordenação) como checklist.              
+      46 +2. Rodei `pytest -q` no código original; as falhas já davam pis
+         +tas (`-28 == 3` nas noites, ranking                            
+      47 +   `['H04', 'H03', 'H02']`).                                   
+      48 +3. Revisei cada módulo contra o checklist, o que levou às causa
+         +s e ao corte de 200 linhas, que nenhum teste pegava.           
+      49 +4. Analisei o `reservas_hoteis.csv` para descartar problema nos
+         + dados: status, moedas e datas padronizados,                   
+      50 +   sem IDs repetidos e sem checkout antes do check-in.         
+      51 +5. Corrigi um defeito por commit, rodando os testes a cada pass
+         +o.                                                             
+      52 +6. Comparei o relatório real com um script independente que apl
+         +ica as regras do README direto no CSV. Os                      
+      53 +   números bateram.                                            
+      54  
+      53 -Depois rodei `pytest -q` no código original. As 5 falhas já dav
+         -am boas pistas: `-28 == 3` nas noites e o ranking              
+      54 -saindo como `['H04', 'H03', 'H02']` em vez de `['H01', 'H02', '
+         -H03']`.                                                        
+      55 +## Testes adicionais                                           
+      56  
+      56 -Em seguida li cada módulo comparando com as regras do README. F
+         -oi assim que achei a causa de cada falha e também              
+      57 -o corte de 200 linhas, que nenhum teste pegava.                
+      57 +Em `tests/test_extras.py`:                                     
+      58  
+      59 -Para descartar problema nos dados, analisei o `reservas_hoteis.
+         -csv`. Os status, as moedas e as datas estão todos              
+      60 -padronizados, não há IDs repetidos nem hotel com dois nomes, e 
+         -nenhum checkout vem antes do check-in. Ou seja,                
+      61 -os defeitos estavam mesmo no CLI.                              
+      62 -                                                               
+      63 -Corrigi um defeito por vez, rodando os testes e fazendo um comm
+         -it depois de cada correção. O histórico do git                 
+      64 -mostra cada mudança separada.                                  
+      65 -                                                               
+      66 -Para ter certeza de que o relatório real estava certo, e não só
+         - os testes, comparei a saída do CLI com um                     
+      67 -cálculo independente: um script à parte que aplica as regras do
+         - README direto no CSV. Os números bateram.                     
+      68 -                                                               
+      69 -## Testes que adicionei                                        
+      70 -                                                               
+      71 -Coloquei em `tests/test_extras.py` os cenários que os testes fo
+         -rnecidos não cobriam:                                          
+      72 -                                                               
+      73 -- arquivo com mais de 200 linhas (o defeito 5);                
+      74 -- empate no ranking, que deve ser resolvido pelo `hotel_id`;   
+      59 +- arquivo com mais de 200 linhas (defeito 5);                  
+      60 +- empate no ranking resolvido por `hotel_id`;                  
+      61  - noites na virada de ano com mais de um quarto;
+      76 -- arredondamento half-up feito só no final, depois da soma;    
+      77 -- relatório sem nenhuma reserva confirmada (média `"0.00"` e li
+         -stas vazias);                                                  
+      78 -- códigos de saída para `--top 0` e para arquivo inexistente;  
+      79 -- moeda sem taxa de câmbio, que deve sair com código 2 (a melho
+         -ria extra).                                                    
+      62 +- arredondamento half-up só depois da soma;                    
+      63 +- relatório sem reservas confirmadas (média `"0.00"` e listas v
+         +azias);                                                        
+      64 +- códigos de saída para `--top 0` e arquivo inexistente;       
+      65 +- moeda sem taxa de câmbio saindo com código 2.                
+      66  
+      81 -No começo, esses testes não estavam rodando: o `pytest -q` cont
+         -inuava mostrando só 5 testes. Na revisão com a                 
+      82 -IA, apareceram dois motivos. O arquivo estava salvo como `teste
+         -_extras.py`, e o pytest só procura arquivos que                
+      83 -começam com `test_`. Além disso, parte das funções estava com r
+         -ecuo a mais, dentro de outro teste, e por isso                 
+      84 -nunca era chamada. A revisão também apontou um `tmp_path` falta
+         -ndo e um nome de campo errado. Depois que                      
+      85 -corrigi esses pontos, o teste das 200 linhas falhou e revelou q
+         -ue o corte ainda estava no código. Corrigi isso                
+      86 -no commit `c88e7c5`.                                           
+      67 +Confirmei que o teste das 200 linhas falha se o corte voltar ao
+         + código. Os demais já passavam e ficam como                    
+      68 +proteção contra regressões.                                    
+      69  
+      88 -Confirmei que o teste das 200 linhas **falha** quando o corte v
+         -olta para o código, então ele protege de fato                  
+      89 -contra esse defeito. Os testes de arredondamento e de códigos d
+         -e saída já passavam antes. Mantive esses testes                
+      90 -para que essas regras não quebrem em mudanças futuras.         
+      91 -                                                               
+      70  ## Como validar
+      71  
+      94 -Precisa de Python 3.11 ou mais novo.                           
+      72 +Requer Python 3.11+.                                           
+      73  
+      74  ```bash
+      75  python3.11 -m venv .venv
+     ...
+       80  ruff check .
+       81  ```
+       82  
+      105 -Amostra de validação (os números devem bater com a tabela do R
+          -EADME):                                                       
+       83 +Amostra de validação (deve bater com a tabela do README):     
+       84  
+       85  ```bash
+       86  PYTHONPATH=src python -m onfly_report \
+     ...
+      102  
+      103  ## Resultado do `pytest`
+      104  
+      105 +```                                                           
+      106  13 passed in 0.32s
+      107 +```                                                           
+      108  
+      129 -Os 5 testes fornecidos continuam sem alteração, e o `ruff chec
+          -k .` não aponta nenhum problema.                              
+      109 +Os 5 testes fornecidos seguem inalterados e o `ruff check .` n
+          +ão aponta problemas.                                          
+      110  
+      111  ## Uso de IA
+      112  
+      133 -Usei IA neste desafio. A exportação das sessões e a declaração
+          - do que foi feito por mim e pela IA estão em                  
+      134 -`entrega/uso-de-ia/`.                                         
+      113   No newline at end of file
+      114 +Usei IA neste desafio. A exportação da sessão e a declaração e
+          +stão em `entrega/uso-de-ia/`.                                 
+
+⏺ Write(entrega/uso-de-ia/declaracao.md)
+  ⎿  Added 23 lines, removed 35 lines
+       1  # Declaração de uso de IA
+       2  
+       3 -## Ferramentas e modelo                                        
+       3 +## Ferramenta e modelo                                         
+       4  
+       5 -Usei o **Claude Opus 5.5 (high effort)** em duas ferramentas:  
+       5 +**Claude Code** (terminal) com **Claude Opus 5.5 (high effort)*
+         +*. Sessão exportada em `sessao-01.txt`.                        
+       6  
+       7 -| Sessão | Ferramenta | Para quê |                             
+       8 -|-|-|-|                                                        
+       9 -| `sessao-01.md` | Claude Code (terminal) | Correção do ranking
+         -, busca de defeitos não cobertos pelos testes (corte de 200 lin
+         -has), revisão dos meus testes, revisão do repositório e da docu
+         -mentação de entrega |                                          
+      10 -                                                               
+      11 -Eu nunca tinha programado em Python antes deste desafio. Por is
+         -so usei a IA bastante, tanto para encontrar os                 
+       7 +Eu nunca tinha programado em Python antes deste desafio, então 
+         +usei a IA bastante, tanto para encontrar os                    
+       8  problemas quanto para entender cada correção.
+       9  
+      10  ## O que a IA fez
+      11  
+      16 -No Claude Code CLI                                             
+      17 -                                                               
+      12  - Achou a causa do ranking invertido e **aplicou a correção** e
+          m `services/report_builder.py` (`-valor` na
+      13    chave de ordenação), explicando por que não usar `reverse=Tru
+          e`.
+      20 -- A meu pedido, procurou defeitos que os testes não cobriam e a
+         -chou o corte de 200 linhas. Removeu o corte e                  
+      21 -  comparou o relatório real com um cálculo independente, um scr
+         -ipt à parte que aplica as regras do README                     
+      22 -  direto no CSV. Essa remoção não chegou ao commit; veja abaixo
+         -.                                                              
+      23 -- Analisou o CSV para confirmar que os dados estavam consistent
+         -es e que os defeitos eram do CLI.                              
+      24 -- Revisou o meu `tests/test_extras.py` e apontou o que estava e
+         -rrado: nome do arquivo (`teste_extras.py`),                    
+      25 -  funções com recuo a mais dentro de outro teste, `tmp_path` fa
+         -ltando, nome de campo errado e uma função sem o                
+      26 -  prefixo `test_`. Rodou o arquivo e mostrou que o teste das 20
+         -0 linhas falhava porque o corte tinha voltado ao               
+      27 -  código.                                                      
+      28 -- Revisou o repositório antes da entrega (repositório privado, 
+         -arquivos sem commit, pasta `uso-de-ia/`                        
+      29 -  faltando).                                                   
+      14 +- A meu pedido, procurou defeitos não cobertos pelos testes e a
+         +chou o corte de 200 linhas. Removeu o corte e                  
+      15 +  comparou o relatório real com um script independente que apli
+         +ca as regras do README no CSV. Essa remoção                    
+      16 +  não chegou ao commit (ver abaixo).                           
+      17 +- Analisou o CSV para confirmar que os dados estavam consistent
+         +es.                                                            
+      18 +- Revisou meu `tests/test_extras.py` e apontou os erros: nome d
+         +o arquivo (`teste_extras.py`, que o pytest                     
+      19 +  ignora), funções com recuo a mais dentro de outro teste, `tmp
+         +_path` faltando, nome de campo errado e uma                    
+      20 +  função sem o prefixo `test_`.                                
+      21 +- Revisou o repositório e a documentação antes da entrega.     
+      22  
+      23  ## O que eu fiz
+      24  
+      33 -- Criei o repositório e fiz o primeiro commit com o código orig
+         -inal, antes de qualquer alteração.                             
+      34 -- Instalei o Python 3.11 pelo Homebrew e configurei o ambiente 
+         -virtual.                                                       
+      35 -- Apliquei com as minhas próprias mãos as correções de noites, 
+         -câmbio e status, um arquivo por vez. Rodei                     
+      36 -  `pytest -q` depois de cada uma e fiz um commit por defeito.  
+      37 -- Revisei a correção do ranking feita pela IA e fiz o commit (`
+         -64b031d`).                                                     
+      38 -- Errei e corrigi no caminho. Na correção das noites, editei pr
+         -imeiro a assinatura da função em vez do `return`.              
+      39 -  No câmbio, mantive o `float` no começo e só troquei depois de
+         - entender a regra do `Decimal`. Também acertei a               
+      40 -  ordem dos imports apontada pelo `ruff`.                      
+      41 -- Pedi que a IA procurasse defeitos que os testes não cobriam, 
+         -o que levou ao corte de 200 linhas.                            
+      42 -- Escrevi os testes adicionais em `tests/test_extras.py`. Depoi
+         -s da revisão da IA, corrigi o nome do arquivo, o               
+      43 -  recuo e os demais erros. Com os testes rodando, o das 200 lin
+         -has mostrou que o corte ainda estava no código.                
+      44 -  Removi o corte e fiz o commit (`c88e7c5`).                   
+      45 -- Decidi implementar a melhoria da moeda sem taxa de câmbio, qu
+         -e sai com código 2, e escrevi o teste dela.                    
+      46 -- Deixei os testes independentes da pasta de onde o `pytest` é 
+         -executado (`326ceb6`).                                         
+      47 -- Rodei a validação com a amostra e com o arquivo real na minha
+         - máquina e conferi o `output/report.json`.                     
+      48 -- Revisei e ajustei o texto do `README-ENTREGA.md` e desta decl
+         -aração.                                                        
+      25 +- Criei o repositório com um primeiro commit do código original
+         +, antes de qualquer alteração.                                 
+      26 +- Instalei o Python 3.11 e configurei o ambiente virtual.      
+      27 +- Apliquei eu mesma as correções de noites, câmbio e status, um
+         +a por commit, rodando `pytest -q` a cada uma.                  
+      28 +  Errei no caminho: nas noites, editei primeiro a assinatura da
+         + função em vez do `return`; no câmbio, mantive                 
+      29 +  o `float` até entender a regra do `Decimal`; e ajustei a orde
+         +m dos imports apontada pelo `ruff`.                            
+      30 +- Revisei e commitei a correção do ranking feita pela IA (`64b0
+         +31d`).                                                         
+      31 +- Escrevi os testes adicionais e corrigi os erros apontados na 
+         +revisão. Com eles rodando, o teste das 200                     
+      32 +  linhas mostrou que o corte ainda estava no código; removi e c
+         +ommitei (`c88e7c5`).                                           
+      33 +- Decidi implementar a melhoria da moeda sem taxa (código 2) e 
+         +escrevi o teste dela.                                          
+      34 +- Deixei os testes independentes da pasta de execução do `pytes
+         +t` (`326ceb6`).                                                
+      35 +- Rodei a validação com a amostra e com o arquivo real e confer
+         +i o `output/report.json`.                                      
+      36 +- Revisei o texto do `README-ENTREGA.md` e desta declaração.   
+
+⏺ Update(entrega/uso-de-ia/declaracao.md)
+  ⎿  Added 1 line, removed 1 line
+      24  
+      25  - Criei o repositório com um primeiro commit do código original
+          , antes de qualquer alteração.
+      26  - Instalei o Python 3.11 e configurei o ambiente virtual.
+      27 -- Apliquei eu mesma as correções de noites, câmbio e status, um
+         -a por commit, rodando `pytest -q` a cada uma.                  
+      27 +- Apliquei com as minhas próprias mãos as correções de noites, 
+         +câmbio e status, uma por commit, rodando `pytest -q` a cada uma
+         +.                                                              
+      28    Errei no caminho: nas noites, editei primeiro a assinatura da
+           função em vez do `return`; no câmbio, mantive
+      29    o `float` até entender a regra do `Decimal`; e ajustei a orde
+          m dos imports apontada pelo `ruff`.
+      30  - Revisei e commitei a correção do ranking feita pela IA (`64b0
+          31d`).
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Enxuguei os dois arquivos. O README-ENTREGA caiu de 133 para 113 linhas e a
+  declaração de 48 para 36. Os números e o resultado do pytest continuam os
+  mesmos: rodei aqui e deu 13 passed, com o ruff limpo.
+
+  Erros que corrigi na declaração
+  - O texto dizia "duas ferramentas", mas a tabela só listava uma. Troquei a
+    tabela por uma frase só.
+  - A sessão aparecia como sessao-01.md, mas o arquivo é sessao-01.txt.
+  - Tirei a linha solta "No Claude Code CLI", que estava sem continuação.
+  - Tirei "Pedi que a IA procurasse defeitos…" de "O que eu fiz", porque isso já
+    aparece em "O que a IA fez".
+  - Juntei o item "Errei e corrigi no caminho" com o das correções manuais,
+    porque falam da mesma coisa.
+
+  README-ENTREGA
+  - Defeitos: cada um agora tem uma linha de Causa e uma de Correção. O README
+    do desafio pede a "causa raiz em uma frase por defeito", então esse formato
+    atende o pedido e ainda ficou mais curto.
+  - Como investiguei: virou uma lista de 6 passos, sem frases como "com calma"
+    ou "ou seja".
+  - Testes adicionais: tirei o parágrafo sobre os testes que não rodavam (nome
+    teste_extras.py, recuo, tmp_path). Ele repetia o que já está na declaração,
+    que é o lugar dele, e no README parecia um diário de bordo.
+  - Resultado do pytest: coloquei a saída num bloco de código.
+
+  O que o desafio exige continua lá: defeitos, causa raiz, investigação, como
+  validar e resultado do pytest.
+
+  Guardei os originais em /private/tmp/claude-501/-Users-sophiacfernandes-dev-de
+  safio-onfly-desafio/e02e631c-bd8b-426d-836f-8b3deb080eee/scratchpad/backup/,
+  caso queira comparar ou voltar algum trecho.
+
+  A declaração diz que a IA "revisou a documentação". Se você exportar esta
+  conversa também, salve como sessao-02.txt e cite o arquivo na declaração.
+
+✻ Cooked for 1m 14s · done 6:34 PM
+
+❯ adicione essa sessao-02 na declaracao. Vou exportar aqui                      
+
+⏺ Update(entrega/uso-de-ia/declaracao.md)
+  ⎿  Added 4 lines, removed 1 line
+       2  
+       3  ## Ferramenta e modelo
+       4  
+       5 -**Claude Code** (terminal) com **Claude Opus 5.5 (high effort)*
+         -*. Sessão exportada em `sessao-01.txt`.                        
+       5 +**Claude Code** (terminal) com **Claude Opus 5.5 (high effort)*
+         +*. Sessões exportadas:                                         
+       6  
+       7 +- `sessao-01.txt`: correções, busca de defeitos, revisão dos te
+         +stes e do repositório;                                         
+       8 +- `sessao-02.txt`: revisão e enxugamento do `README-ENTREGA.md`
+         + e desta declaração.                                           
+       9 +                                                               
+      10  Eu nunca tinha programado em Python antes deste desafio, então 
+          usei a IA bastante, tanto para encontrar os
+      11  problemas quanto para entender cada correção.
+      12  
+
+⏺ Update(entrega/uso-de-ia/declaracao.md)
+  ⎿  Added 3 lines, removed 1 line
+      21  - Revisou meu `tests/test_extras.py` e apontou os erros: nome d
+          o arquivo (`teste_extras.py`, que o pytest
+      22    ignora), funções com recuo a mais dentro de outro teste, `tmp
+          _path` faltando, nome de campo errado e uma
+      23    função sem o prefixo `test_`.
+      24 -- Revisou o repositório e a documentação antes da entrega.     
+      24 +- Revisou o repositório antes da entrega.                      
+      25 +- Na `sessao-02`, enxugou o `README-ENTREGA.md` e esta declaraç
+         +ão, e corrigiu inconsistências (nome do                        
+      26 +  arquivo da sessão, número de ferramentas).                   
+      27  
+      28  ## O que eu fiz
+      29  
+
+⏺ Update(entrega/README-ENTREGA.md)
+  ⎿  Added 1 line, removed 1 line
+      110  
+      111  ## Uso de IA
+      112  
+      113 -Usei IA neste desafio. A exportação da sessão e a declaração e
+          -stão em `entrega/uso-de-ia/`.                                 
+      113 +Usei IA neste desafio. As exportações das sessões e a declaraç
+          +ão estão em `entrega/uso-de-ia/`.                             
+
+⏺ Adicionei a sessao-02 na declaração:
+
+  - Ferramenta e modelo: a frase agora lista as duas sessões, cada uma com uma
+    linha dizendo o que foi feito nela.
+  - O que a IA fez: entrou um item novo para esta sessão (enxugar os dois textos
+    e corrigir as inconsistências). O item anterior ficou só como "revisou o
+    repositório antes da entrega", para não repetir.
+  - README-ENTREGA: no fim, troquei "a exportação da sessão" por "as exportações
+    das sessões".
+
+  Para exportar, rode /export entrega/uso-de-ia/sessao-02.txt. Com esse nome, o
+  arquivo bate com o que está escrito na declaração.
+
+✻ Brewed for 9s · done 6:35 PM
