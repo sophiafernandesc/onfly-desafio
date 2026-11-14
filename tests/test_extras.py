@@ -1,9 +1,11 @@
 """Testes adicionais: cenários que os testes fornecidos não cobrem."""
 
 import pytest
-from helpers import run_cli
+from helpers import PROJECT_ROOT, run_cli
 
 from onfly_report.cli import main
+
+RATES_PATH = PROJECT_ROOT / "data" / "taxas_cambio.csv"
 
 
 def test_reads_all_reservations_beyond_200_rows(tmp_path):
@@ -78,7 +80,7 @@ def test_report_without_confirmed_reservations(tmp_path):
 def test_invalid_top_exits_with_code_2():
     """--top menor que 1 é argumento inválido: código de saída 2."""
     with pytest.raises(SystemExit) as exit_info:
-        main(["--input", "data/reservas_hoteis.csv", "--rates", "data/taxas_cambio.csv", "--top", "0"])
+        main(["--input", str(PROJECT_ROOT / "data" / "reservas_hoteis.csv"), "--rates", str(RATES_PATH), "--top", "0"])
 
     assert exit_info.value.code == 2
 
@@ -88,7 +90,7 @@ def test_missing_input_file_exits_with_code_2(tmp_path):
     code = main(
         [
             "--input", str(tmp_path / "nao-existe.csv"),
-            "--rates", "data/taxas_cambio.csv",
+            "--rates", str(RATES_PATH),
             "--output", str(tmp_path / "report.json"),
         ]
     )
@@ -110,7 +112,7 @@ def test_currency_without_rate_exits_with_code_2(tmp_path):
     code = main(
         [
             "--input", str(input_path),
-            "--rates", "data/taxas_cambio.csv",
+            "--rates", str(RATES_PATH),
             "--output", str(tmp_path / "report.json"),
         ]
     )
